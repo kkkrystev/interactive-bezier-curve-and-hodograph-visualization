@@ -230,14 +230,14 @@ class BezierCanvas(QWidget):
         t = self.app.t
         show_casteljau = self.app.show_casteljau
         show_hodograph = self.app.show_hodograph
-        seg0 = segments[0] if segments else []
-        p_at_t = de_casteljau(seg0, t) if seg0 and len(seg0) >= 2 else {"x": 0, "y": 0}
-        d_at_t = derivative(seg0, t) if seg0 and len(seg0) >= 2 else {"x": 0, "y": 0}
         ox, oy = HODO_OFFSET
 
         for seg in segments:
             if len(seg) < 2:
                 continue
+            # Per-segment point and derivative at t (for tangent vector)
+            p_seg = de_casteljau(seg, t)
+            d_seg = derivative(seg, t)
             # Control polygon (black)
             path = QPainterPath()
             path.moveTo(seg[0]["x"], seg[0]["y"])
@@ -263,6 +263,11 @@ class BezierCanvas(QWidget):
                 path.lineTo(p["x"], p["y"])
             painter.drawPath(path)
 
+            # Tangent vector (green) — for this segment, always when segment has curve
+            to_x = p_seg["x"] + d_seg["x"] * TANGENT_SCALE
+            to_y = p_seg["y"] + d_seg["y"] * TANGENT_SCALE
+            self._draw_arrow(painter, p_seg["x"], p_seg["y"], to_x, to_y, QColor(0, 160, 80, 242))
+
             # Hodograph (blue) — stroke only
             if show_hodograph and len(seg) >= 2:
                 h_ctrl = hodograph_control_points(seg)
@@ -277,10 +282,6 @@ class BezierCanvas(QWidget):
                         hp = de_casteljau(h_ctrl, tt)
                         path.lineTo(hp["x"] + ox, hp["y"] + oy)
                     painter.drawPath(path)
-                    # Tangent vector (green) — stroke only
-                    to_x = p_at_t["x"] + d_at_t["x"] * TANGENT_SCALE
-                    to_y = p_at_t["y"] + d_at_t["y"] * TANGENT_SCALE
-                    self._draw_arrow(painter, p_at_t["x"], p_at_t["y"], to_x, to_y, QColor(0, 160, 80, 242))
                     # Hodograph origin — outline only
                     painter.setBrush(Qt.BrushStyle.NoBrush)
                     painter.setPen(QPen(QColor(0, 0, 255, 217), 1))
